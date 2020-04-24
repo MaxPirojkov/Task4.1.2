@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,6 +24,9 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import static android.provider.ContactsContract.Intents.Insert.NAME;
 
 public class ListViewActivity extends AppCompatActivity {
+
+    private static final String FIRST_ITEM = "0";
+    private static final String SECOND_ITEM = "1";
 
     List<Map<String, String>> content = new ArrayList<>();
     SimpleAdapter adapter;
@@ -47,7 +51,7 @@ public class ListViewActivity extends AppCompatActivity {
 
         prepareContent();
 
-        createAdapter(content);
+        createAdapter();
 
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -67,11 +71,10 @@ public class ListViewActivity extends AppCompatActivity {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if (mSwipeRefreshLayout.isRefreshing()) {
-                            mSwipeRefreshLayout.setRefreshing(false);
-                            readText();
-                        }
+                        mSwipeRefreshLayout.setRefreshing(false);
+                        readText();
                     }
+
                 }, 1000);
             }
         });
@@ -80,9 +83,10 @@ public class ListViewActivity extends AppCompatActivity {
 
     private void saveText() {
         sPref = getSharedPreferences(NAME, Context.MODE_PRIVATE);
-        if (!sPref.getString(NAME, "Default value").equals("Default value")) {
-            startActivity(new Intent(ListViewActivity.this, ListViewActivity.class));
-            finish();
+        if (!sPref.contains(NAME)) {
+            sPref.edit()
+                    .putString(SAVED_TEXT, getString(R.string.large_text))
+                    .apply();
         }
         SharedPreferences.Editor ed = sPref.edit();
         ed.putString(SAVED_TEXT, getString(R.string.large_text));
@@ -91,25 +95,24 @@ public class ListViewActivity extends AppCompatActivity {
 
     private void readText() {
         content.clear();
-        String savedText = sPref.getString(SAVED_TEXT, "");
         prepareContent();
         adapter.notifyDataSetChanged();
     }
 
     private void prepareContent() {
-        String[] arrayContent = getString(R.string.large_text).split("\n\n");
-        for (int i = 0; i < arrayContent.length; i++) {
+        String savedText = sPref.getString(SAVED_TEXT, "");
+        String[] arrayContent = Objects.requireNonNull(savedText).split("\n\n");
+        for (String s : arrayContent) {
             Map<String, String> rowMap = new HashMap<>();
-            rowMap.put("0", arrayContent[i]);
-            rowMap.put("1", String.valueOf(arrayContent[i].length()));
+            rowMap.put(FIRST_ITEM, s);
+            rowMap.put(SECOND_ITEM, String.valueOf(s.length()));
             content.add(rowMap);
         }
     }
 
-    @NonNull
-    private void createAdapter(List<Map<String, String>> values) {
+    private void createAdapter() {
         adapter = new SimpleAdapter(this, content, android.R.layout.simple_list_item_2,
-                new String[]{"0", "1"},
+                new String[]{FIRST_ITEM, SECOND_ITEM},
                 new int[]{android.R.id.text1, android.R.id.text2});
         listView.setAdapter(adapter);
     }
